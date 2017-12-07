@@ -315,39 +315,44 @@ class Conflict {
         }, 0);
     }
 
-    calculateSingleSkillFor(cards, conflictType) {
-        return _.reduce(cards, (sum, card) => {
-            if(card.bowed || !card.allowGameAction('countForResolution')) {
-                return sum;
-            }
-            return sum + card.getSkill(conflictType);
-        }, 0);
-    }
-
     // Will return difference in military skill between attacker and defender, in
     // relation to attacker value (negative means attacker has smaller value)
     compareMilitary() {
-        let attackerSkill = this.calculateSingleSkillFor(this.attackers, 'military') + this.getAttackerSkillModifier('military');
-        let defenderSkill = this.calculateSingleSkillFor(this.defenders, 'military') + this.getDefenderSkillModifier('military');
+        let currFunc = this.game.currentConflict.skillFunction;
+        this.skillFunction = card => card.getSkill('military');
+        this.calculateSkill();
+
+        let attackerSkill = this.calculateSkillFor(this.attackers) + this.getAttackerSkillModifier('military');
+        let defenderSkill = this.calculateSkillFor(this.defenders) + this.getDefenderSkillModifier('military');
 
         if(this.attackingPlayer.imperialFavor === 'military' && this.attackers.length > 0) {
-            this.attackerSkill++;
+            attackerSkill++;
         } else if(this.defendingPlayer.imperialFavor === 'military' && this.defenders.length > 0) {
-            this.defenderSkill++;
+            defenderSkill++;
         }
+
+        this.game.currentConflict.skillFunction = currFunc;
+        this.game.currentConflict.calculateSkill();
 
         return attackerSkill - defenderSkill;
     }
 
     comparePolitical() {
-        let attackerSkill = this.calculateSingleSkillFor(this.attackers, 'political') + this.getAttackerSkillModifier('political');
-        let defenderSkill = this.calculateSingleSkillFor(this.defenders, 'political') + this.getDefenderSkillModifier('political');
+        let currFunc = this.game.currentConflict.skillFunction;
+        this.skillFunction = card => card.getSkill('political');
+        this.calculateSkill();
+
+        let attackerSkill = this.calculateSkillFor(this.attackers) + this.getAttackerSkillModifier('political');
+        let defenderSkill = this.calculateSkillFor(this.defenders) + this.getDefenderSkillModifier('political');
 
         if(this.attackingPlayer.imperialFavor === 'political' && this.attackers.length > 0) {
-            this.attackerSkill++;
+            attackerSkill++;
         } else if(this.defendingPlayer.imperialFavor === 'political' && this.defenders.length > 0) {
-            this.defenderSkill++;
+            defenderSkill++;
         }
+
+        this.game.currentConflict.skillFunction = currFunc;
+        this.game.currentConflict.calculateSkill();
 
         return attackerSkill - defenderSkill;
     }
