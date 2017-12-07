@@ -309,7 +309,7 @@ class Conflict {
             if(card.bowed || !card.allowGameAction('countForResolution')) {
                 return sum;
             }
-            return sum + card.getSkill(conflictType);
+            return sum + card.getSkill(this.conflictType);
         }, 0);
     }
 
