@@ -20,11 +20,13 @@ class Conflict {
         this.elements = [];
         this.attackers = [];
         this.attackerSkill = 0;
-        this.attackerSkillModifier = 0;
+        this.attackerMilitarySkillModifier = 0;
+        this.attackerPoliticalSkillModifier = 0;
         this.defenders = [];
         this.defenderSkill = 0;
         this.maxAllowedDefenders = 0;
-        this.defenderSkillModifier = 0;
+        this.defenderMilitarySkillModifier = 0;
+        this.defenderPoliticalSkillModifier = 0;
     }
 
     singlePlayerDefender() {
@@ -80,7 +82,7 @@ class Conflict {
         this.markAsParticipating([defender]);
         this.calculateSkill();
     }
-    
+
     moveToConflict(cards) {
         if(!_.isArray(cards)) {
             cards = [cards];
@@ -118,27 +120,27 @@ class Conflict {
     modifyElementsToResolve(amount) {
         this.elementsToResolve += amount;
     }
-        
-    
+
+
     hasElement(element) {
         return this.elements.includes(element);
     }
-    
+
     getElements() {
         return _.uniq(this.elements);
     }
-    
+
     addElement(element) {
         this.elements.push(element);
     }
-    
+
     removeElement(element) {
         let index = _.indexOf(this.elements, element);
         if(index > -1) {
             this.elements.splice(index, 1);
         }
     }
-    
+
     chooseWhetherToResolveRingEffect(player = this.attackingPlayer, optional = true) {
         this.game.raiseEvent('onResolveRingEffect', { player: player, conflict: this }, () => {
             let elements = this.getElements();
@@ -153,10 +155,10 @@ class Conflict {
             } else {
                 this.resolveConflictRing(player, optional);
             }
-            return { resolved: true, success: true };        
+            return { resolved: true, success: true };
         });
     }
-    
+
     resolveConflictRing(player, optional) {
         let elements = this.getElements();
         if(elements.length === 0) {
@@ -182,7 +184,7 @@ class Conflict {
         }
         this.chooseElementsToResolve(player, optional, this.elementsToResolve, elements);
     }
-        
+
     chooseElementsToResolve(player, optional, elementsToResolve, elements, chosenElements = []) {
         if(elements.length === 0 || elementsToResolve === 0) {
             player.resolveRingEffects(chosenElements, optional);
@@ -204,7 +206,7 @@ class Conflict {
             onCancel: () => player.resolveRingEffects(chosenElements, optional)
         });
     }
-    
+
     switchType() {
         let ring = this.game.rings[this.conflictRing];
         ring.flipConflictType();
@@ -213,7 +215,7 @@ class Conflict {
         this.game.reapplyStateDependentEffects();
         this.checkForIllegalParticipants();
     }
-    
+
     switchElement(element) {
         let oldRing = this.game.rings[this.conflictRing];
         oldRing.contested = false;
@@ -228,7 +230,7 @@ class Conflict {
         }
         this.elements.push(element);
     }
-    
+
     checkForIllegalParticipants() {
         _.each(this.attackers, card => {
             if(!card.canParticipateAsAttacker(this.conflictType)) {
@@ -292,9 +294,9 @@ class Conflict {
             return;
         }
 
-        this.attackerSkill = this.calculateSkillFor(this.attackers) + this.attackerSkillModifier;
-        this.defenderSkill = this.calculateSkillFor(this.defenders) + this.defenderSkillModifier;
-        
+        this.attackerSkill = this.calculateSkillFor(this.attackers) + this.getAttackerSkillModifier();
+        this.defenderSkill = this.calculateSkillFor(this.defenders) + this.getDefenderSkillModifier();
+
         if(this.attackingPlayer.imperialFavor === this.conflictType && this.attackers.length > 0) {
             this.attackerSkill++;
         } else if(this.defendingPlayer.imperialFavor === this.conflictType && this.defenders.length > 0) {
@@ -302,23 +304,79 @@ class Conflict {
         }
     }
 
-    calculateSkillFor(cards) {
+    calculateSkillFor(cards, conflictType = this.conflictType) {
         return _.reduce(cards, (sum, card) => {
             if(card.bowed || !card.allowGameAction('countForResolution')) {
                 return sum;
             }
-            return sum + card.getSkill(this.conflictType);
+            return sum + card.getSkill(conflictType);
         }, 0);
     }
 
-    modifyAttackerSkill(value) {
-        this.attackerSkillModifier += value;
+    // Will return difference in military skill between attacker and defender, in
+    // relation to attacker value (negative means attacker has smaller value)
+    compareMilitary() {
+        let attackerSkill = this.calculateSkillFor(this.attackers, 'military') + this.getAttackerSkillModifier('military');
+        let defenderSkill = this.calculateSkillFor(this.defenders, 'military') + this.getDefenderSkillModifier('military');
+
+        if(this.attackingPlayer.imperialFavor === 'military' && this.attackers.length > 0) {
+            this.attackerSkill++;
+        } else if(this.defendingPlayer.imperialFavor === 'military' && this.defenders.length > 0) {
+            this.defenderSkill++;
+        }
+
+        return attackerSkill - defenderSkill;
+    }
+
+    comparePolitical() {
+        let attackerSkill = this.calculateSkillFor(this.attackers, 'political') + this.getAttackerSkillModifier('political');
+        let defenderSkill = this.calculateSkillFor(this.defenders, 'political') + this.getDefenderSkillModifier('political');
+
+        if(this.attackingPlayer.imperialFavor === 'political' && this.attackers.length > 0) {
+            this.attackerSkill++;
+        } else if(this.defendingPlayer.imperialFavor === 'political' && this.defenders.length > 0) {
+            this.defenderSkill++;
+        }
+
+        return attackerSkill - defenderSkill;
+    }
+
+    modifyAttackerSkill(value, conflictType = this.conflictType) {
+        if(conflictType === 'military') {
+            this.attackerMilitarySkillModifier += value;
+        } else if(conflictType === 'political') {
+            this.attackerPoliticalSkillModifier += value;
+        }
         this.calculateSkill();
     }
 
-    modifyDefenderSkill(value) {
-        this.defenderSkillModifier += value;
+    modifyDefenderSkill(value, conflictType = this.conflictType) {
+        if(conflictType === 'military') {
+            this.defenderMilitarySkillModifier += value;
+        } else if(conflictType === 'political') {
+            this.defenderPoliticalSkillModifier += value;
+        }
         this.calculateSkill();
+    }
+
+    getAttackerSkillModifier(conflictType = this.conflictType) {
+        if(conflictType === 'military') {
+            return this.attackerMilitarySkillModifier;
+        } else if(conflictType === 'political') {
+            return this.attackerPoliticalSkillModifier;
+        }
+        return 0;
+
+    }
+
+    getDefenderSkillModifier(conflictType) {
+        if(conflictType === 'military') {
+            return this.defenderMilitarySkillModifier;
+        } else if(conflictType === 'political') {
+            return this.defenderPoliticalSkillModifier;
+        }
+        return 0;
+
     }
 
     determineWinner() {
