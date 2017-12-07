@@ -27,6 +27,8 @@ class Conflict {
         this.maxAllowedDefenders = 0;
         this.defenderMilitarySkillModifier = 0;
         this.defenderPoliticalSkillModifier = 0;
+        this.defenderSkillModifier = 0;
+        this.skillFunction = card => card.getSkill(this.conflictType);
     }
 
     singlePlayerDefender() {
@@ -309,7 +311,7 @@ class Conflict {
             if(card.bowed || !card.allowGameAction('countForResolution')) {
                 return sum;
             }
-            return sum + card.getSkill(this.conflictType);
+            return sum + this.skillFunction(card);
         }, 0);
     }
 
