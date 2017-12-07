@@ -304,7 +304,16 @@ class Conflict {
         }
     }
 
-    calculateSkillFor(cards, conflictType = this.conflictType) {
+    calculateSkillFor(cards) {
+        return _.reduce(cards, (sum, card) => {
+            if(card.bowed || !card.allowGameAction('countForResolution')) {
+                return sum;
+            }
+            return sum + card.getSkill(conflictType);
+        }, 0);
+    }
+
+    calculateSingleSkillFor(cards, conflictType) {
         return _.reduce(cards, (sum, card) => {
             if(card.bowed || !card.allowGameAction('countForResolution')) {
                 return sum;
@@ -316,8 +325,8 @@ class Conflict {
     // Will return difference in military skill between attacker and defender, in
     // relation to attacker value (negative means attacker has smaller value)
     compareMilitary() {
-        let attackerSkill = this.calculateSkillFor(this.attackers, 'military') + this.getAttackerSkillModifier('military');
-        let defenderSkill = this.calculateSkillFor(this.defenders, 'military') + this.getDefenderSkillModifier('military');
+        let attackerSkill = this.calculateSingleSkillFor(this.attackers, 'military') + this.getAttackerSkillModifier('military');
+        let defenderSkill = this.calculateSingleSkillFor(this.defenders, 'military') + this.getDefenderSkillModifier('military');
 
         if(this.attackingPlayer.imperialFavor === 'military' && this.attackers.length > 0) {
             this.attackerSkill++;
@@ -329,8 +338,8 @@ class Conflict {
     }
 
     comparePolitical() {
-        let attackerSkill = this.calculateSkillFor(this.attackers, 'political') + this.getAttackerSkillModifier('political');
-        let defenderSkill = this.calculateSkillFor(this.defenders, 'political') + this.getDefenderSkillModifier('political');
+        let attackerSkill = this.calculateSingleSkillFor(this.attackers, 'political') + this.getAttackerSkillModifier('political');
+        let defenderSkill = this.calculateSingleSkillFor(this.defenders, 'political') + this.getDefenderSkillModifier('political');
 
         if(this.attackingPlayer.imperialFavor === 'political' && this.attackers.length > 0) {
             this.attackerSkill++;
